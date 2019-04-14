@@ -55,51 +55,77 @@ y_val = to_categorical(y_val - y_val.min())
 y_test = to_categorical(y_test - y_test.min())
 
 # build model
-lstm_1_units = [100,50,20]
-lstm_2_units = [100,50,20]
-dense_1_units = [100,50,20]
+lstm_1_units = [20]
+lstm_2_units = [20]
+lstm_layers = [0,1,2]
+dense_1_units = [20]
 dense_2_unit = 7
-drop_rates = [0.5,0.2,0]
-batch_sizes = [64,128,32,512]
+dense_layers = [1,2,3]
+drop_rates = [0.5]
+batch_sizes = [512]
+lstm_activations = ['tanh','relu']
 
 for lstm_1_unit in lstm_1_units:
     for lstm_2_unit in lstm_2_units:
-        for dense_1_unit in dense_1_units:
-                for drop_rate in drop_rates:
-                        for batch_size in batch_sizes:
-                                model = Sequential()
-                                model.add(Bidirectional(LSTM(lstm_1_unit, activation='relu', return_sequences=True), input_shape=(80,512)))
-                                model.add(Bidirectional(LSTM(lstm_2_unit,activation='relu', return_sequences=False)))
-                                model.add(Dense(dense_1_unit, activation = 'relu'))
-                                model.add(Dropout(drop_rate))
-                                model.add(Dense(dense_2_unit, activation = 'softmax'))
-                                model.compile(optimizer='adam',loss='categorical_crossentropy', metrics=['accuracy'])
+            for lstm_layer in lstm_layers:
+                for dense_1_unit in dense_1_units:
+                        for dense_layer in dense_layers:
+                                for drop_rate in drop_rates:
+                                        for lstm_activation in lstm_activations:
+                                                for batch_size in batch_sizes:
+                                                        model = Sequential()
+                                                        model.add(Bidirectional(LSTM(lstm_1_unit, activation=lstm_activation, return_sequences=True,dropout=drop_rate), input_shape=(80,512)))
 
+                                                        for i in range(lstm_layer):
+                                                                model.add(Bidirectional(LSTM(lstm_2_unit, activation=lstm_activation, return_sequences=True,dropout=drop_rate)))
 
-                                # TRAIN
-                                # model name
-                                NAME = "biLSTM_L1={}_L2={}_d1={}_d2={}_drop={}_bsize={}_{}".format(lstm_1_unit,
-                                                                                lstm_2_unit,
-                                                                                dense_1_unit,
-                                                                                dense_2_unit,
-                                                                                drop_rate,
-                                                                                batch_size,
-                                                                                int(time.time()))
+                                                        model.add(Bidirectional(LSTM(lstm_2_unit,activation=lstm_activation, return_sequences=False,dropout=drop_rate)))
+                                                        
 
-                                print("######################################################")
-                                print(NAME)
-                                print(model.summary())
+                                                        for j in range(dense_layer):
+                                                                model.add(Dense(dense_1_unit, activation = 'relu'))
+                                                                model.add(Dropout(drop_rate))
 
-                                # callbacks
-                                tensorboard = TensorBoard(log_dir="logs/biLSTM1/{}".format(NAME))
-                                early_stop = EarlyStopping(monitor='val_loss', patience=100, verbose=1, mode='min') 
+                                                        model.add(Dense(dense_2_unit, activation = 'softmax'))
+                                                        model.compile(optimizer='adam',loss='categorical_crossentropy', metrics=['accuracy'])
 
-                                b = batch_size # batch size
+                                                        param_size = model.count_params()
 
-                                model.fit(x_train, y_train,
-                                        epochs = 500,
-                                        validation_data=(x_val,y_val),
-                                        shuffle=True,
-                                        batch_size=b,
-                                        verbose = 0,
-                                        callbacks=[tensorboard])
+                                                        # TRAIN
+                                                        # model name
+                                                        NAME = "biLSTM_P{}_L1={}_L2={}_LSTM-count{}_d1={}_d2={}_drop={}_bsize={}_act={}_dense={}_{}".format(param_size,
+                                                                                                        lstm_1_unit,
+                                                                                                        lstm_2_unit,
+                                                                                                        lstm_layer+2,
+                                                                                                        dense_1_unit,
+                                                                                                        dense_2_unit,
+                                                                                                        drop_rate,
+                                                                                                        batch_size,
+                                                                                                        lstm_activation,
+                                                                                                        dense_layer,
+                                                                                                        int(time.time()))
+
+                                                        print("######################################################")
+                                                        print(NAME)
+                                                        print(model.summary())
+
+                                                        # callbacks
+                                                        tensorboard = TensorBoard(log_dir="logs/biLSTM1/{}".format(NAME))
+                                                        early_stop = EarlyStopping(monitor='val_loss', patience=120, verbose=1, mode='min')
+                                                        
+
+                                                        path = "/home/tim/Documents/Sentiment/models"
+                                                        os.mkdir(os.path.join(path, NAME))
+                                                        path = os.path.join(path, NAME)
+
+                                                        save_path2 = (path + "/epoch.{epoch:02d}-val_loss.{val_loss:.2f}.h5")
+
+                                                        checkpoint2 = ModelCheckpoint(filepath=save_path2,monitor="val_loss",verbose=0,save_best_only=True,mode="min",)
+
+                                                        model.fit(x_train, y_train,
+                                                                epochs = 500,
+                                                                validation_data=(x_val,y_val),
+                                                                shuffle=True,
+                                                                batch_size=batch_size,
+                                                                verbose = 0,
+                                                                callbacks=[tensorboard,early_stop,checkpoint2])
