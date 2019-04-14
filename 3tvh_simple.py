@@ -55,19 +55,18 @@ y_val = to_categorical(y_val - y_val.min())
 y_test = to_categorical(y_test - y_test.min())
 
 # build model
-lstm_1_units = [20]
-lstm_2_units = [20]
-lstm_layers = [0,1,2]
-dense_1_units = [20]
+lstm_1_units = [100,150]
+lstm_2_units = lstm_1_units
+lstm_layers = [7,5,2,0]
+dense_1_units = [50,100]
 dense_2_unit = 7
-dense_layers = [1,2,3]
+dense_layers = [1,2]
 drop_rates = [0.5]
 batch_sizes = [512]
-lstm_activations = ['tanh','relu']
+lstm_activations = ['tanh']
 
 for lstm_1_unit in lstm_1_units:
-    for lstm_2_unit in lstm_2_units:
-            for lstm_layer in lstm_layers:
+        for lstm_layer in lstm_layers:
                 for dense_1_unit in dense_1_units:
                         for dense_layer in dense_layers:
                                 for drop_rate in drop_rates:
@@ -77,9 +76,9 @@ for lstm_1_unit in lstm_1_units:
                                                         model.add(Bidirectional(LSTM(lstm_1_unit, activation=lstm_activation, return_sequences=True,dropout=drop_rate), input_shape=(80,512)))
 
                                                         for i in range(lstm_layer):
-                                                                model.add(Bidirectional(LSTM(lstm_2_unit, activation=lstm_activation, return_sequences=True,dropout=drop_rate)))
+                                                                model.add(Bidirectional(LSTM(lstm_1_unit, activation=lstm_activation, return_sequences=True,dropout=drop_rate)))
 
-                                                        model.add(Bidirectional(LSTM(lstm_2_unit,activation=lstm_activation, return_sequences=False,dropout=drop_rate)))
+                                                        model.add(Bidirectional(LSTM(lstm_1_unit,activation=lstm_activation, return_sequences=False,dropout=drop_rate)))
                                                         
 
                                                         for j in range(dense_layer):
@@ -93,12 +92,11 @@ for lstm_1_unit in lstm_1_units:
 
                                                         # TRAIN
                                                         # model name
-                                                        NAME = "biLSTM_P{}_L1={}_L2={}_LSTM-count{}_d1={}_d2={}_drop={}_bsize={}_act={}_dense={}_{}".format(param_size,
+                                                        NAME = "biLSTM_P{}_L1={}_L2={}_LSTM-count{}_d1={}_drop={}_bsize={}_act={}_dense={}_{}".format(param_size,
                                                                                                         lstm_1_unit,
-                                                                                                        lstm_2_unit,
+                                                                                                        lstm_1_unit,
                                                                                                         lstm_layer+2,
                                                                                                         dense_1_unit,
-                                                                                                        dense_2_unit,
                                                                                                         drop_rate,
                                                                                                         batch_size,
                                                                                                         lstm_activation,
@@ -111,11 +109,11 @@ for lstm_1_unit in lstm_1_units:
 
                                                         # callbacks
                                                         tensorboard = TensorBoard(log_dir="logs/biLSTM1/{}".format(NAME))
-                                                        early_stop = EarlyStopping(monitor='val_loss', patience=120, verbose=1, mode='min')
+                                                        early_stop = EarlyStopping(monitor='val_loss', patience=30, verbose=1, mode='min',restore_best_weights=True)
                                                         
 
                                                         path = "/home/tim/Documents/Sentiment/models"
-                                                        os.mkdir(os.path.join(path, NAME))
+                                                        # os.mkdir(os.path.join(path, NAME))
                                                         path = os.path.join(path, NAME)
 
                                                         save_path2 = (path + "/epoch.{epoch:02d}-val_loss.{val_loss:.2f}.h5")
@@ -128,4 +126,6 @@ for lstm_1_unit in lstm_1_units:
                                                                 shuffle=True,
                                                                 batch_size=batch_size,
                                                                 verbose = 0,
-                                                                callbacks=[tensorboard,early_stop,checkpoint2])
+                                                                callbacks=[tensorboard,early_stop])
+
+                                                        model.save("models/{}.h5".format(NAME))
