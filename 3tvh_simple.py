@@ -63,7 +63,7 @@ dense_2_unit = 7
 dense_layers = [1]
 drop_rates = [0.5]
 batch_sizes = [512]
-lstm_activations = ['tanh']
+lstm_activations = ['relu']
 learn_rates = [1e-4,1e-3,1e-2]
 decay_rates = [0.0,1e-4]
 
